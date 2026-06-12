@@ -1,37 +1,54 @@
-import { describe, it, expect } from 'bun:test'
-import { resolveOpenAIShimRuntimeContext } from '../integrations/runtimeMetadata'
+import { describe, expect, it, test } from 'bun:test'
+
+import {
+  resolveModelRuntimeLimits,
+  resolveOpenAIShimRuntimeContext,
+} from './runtimeMetadata.js'
+
+describe('resolveModelRuntimeLimits', () => {
+  test('uses Gemini 3.5 Flash Vertex metadata instead of fallback limits', () => {
+    const limits = resolveModelRuntimeLimits({
+      model: 'gemini-3.5-flash',
+      processEnv: {
+        CLAUDE_CODE_USE_GEMINI_VERTEX: '1',
+      },
+      activeProfileProvider: 'gemini-vertex',
+    })
+
+    expect(limits).toEqual({
+      contextWindow: 1_048_576,
+      maxOutputTokens: 65_536,
+    })
+  })
+})
 
 describe('resolveOpenAIShimRuntimeContext - segment-boundary heuristic', () => {
   describe('DeepSeek models', () => {
     it('should NOT infer preserveReasoningContent for custom aliases (false-positive case)', () => {
-      // my-deepseek-rag is a custom alias, NOT a provider path
-      // Should NOT trigger the DeepSeek detection
       const result = resolveOpenAIShimRuntimeContext({
         processEnv: {},
         model: 'my-deepseek-rag',
       })
-      // Custom aliases should NOT get preserveReasoningContent
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBeUndefined()
     })
 
     it('should infer preserveReasoningContent for openrouter/deepseek/... paths (true-positive case)', () => {
-      // openrouter/deepseek/deepseek-chat is a provider path with segments
-      // Should trigger the DeepSeek detection
       const result = resolveOpenAIShimRuntimeContext({
         processEnv: {},
         model: 'openrouter/deepseek/deepseek-chat',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBe(true)
       expect(result.openaiShimConfig.reasoningContentFallback).toBe('')
     })
 
     it('should infer preserveReasoningContent for accounts/fireworks/... paths (true-positive case)', () => {
-      // accounts/fireworks/models/deepseek-v3 is a provider path with multiple segments
-      // Should trigger the DeepSeek detection
       const result = resolveOpenAIShimRuntimeContext({
         processEnv: {},
         model: 'accounts/fireworks/models/deepseek-v3',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBe(true)
       expect(result.openaiShimConfig.reasoningContentFallback).toBe('')
     })
@@ -41,6 +58,7 @@ describe('resolveOpenAIShimRuntimeContext - segment-boundary heuristic', () => {
         processEnv: {},
         model: 'deepseek-chat',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBe(true)
     })
 
@@ -49,17 +67,18 @@ describe('resolveOpenAIShimRuntimeContext - segment-boundary heuristic', () => {
         processEnv: {},
         model: 'deepseek-coder',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBe(true)
     })
   })
 
   describe('Kimi/Moonshot models', () => {
     it('should NOT infer preserveReasoningContent for custom kimi aliases', () => {
-      // Custom alias should not trigger
       const result = resolveOpenAIShimRuntimeContext({
         processEnv: {},
         model: 'my-kimi-assistant',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBeUndefined()
     })
 
@@ -68,6 +87,7 @@ describe('resolveOpenAIShimRuntimeContext - segment-boundary heuristic', () => {
         processEnv: {},
         model: 'openrouter/moonshotai/moonshot-v1-8k',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBe(true)
     })
 
@@ -76,6 +96,7 @@ describe('resolveOpenAIShimRuntimeContext - segment-boundary heuristic', () => {
         processEnv: {},
         model: 'moonshot-v1-8k',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBe(true)
     })
   })
@@ -86,6 +107,7 @@ describe('resolveOpenAIShimRuntimeContext - segment-boundary heuristic', () => {
         processEnv: {},
         model: 'gpt-4o',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBeUndefined()
     })
 
@@ -94,6 +116,7 @@ describe('resolveOpenAIShimRuntimeContext - segment-boundary heuristic', () => {
         processEnv: {},
         model: 'claude-sonnet-4-20250514',
       })
+
       expect(result.openaiShimConfig.preserveReasoningContent).toBeUndefined()
     })
   })

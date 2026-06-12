@@ -18,6 +18,7 @@ const originalEnv = {
   OPENAI_MODEL: process.env.OPENAI_MODEL,
   CLAUDE_CODE_USE_OPENAI: process.env.CLAUDE_CODE_USE_OPENAI,
   CLAUDE_CODE_USE_GEMINI: process.env.CLAUDE_CODE_USE_GEMINI,
+  CLAUDE_CODE_USE_GEMINI_VERTEX: process.env.CLAUDE_CODE_USE_GEMINI_VERTEX,
   CLAUDE_CODE_USE_MISTRAL: process.env.CLAUDE_CODE_USE_MISTRAL,
   CLAUDE_CODE_USE_GITHUB: process.env.CLAUDE_CODE_USE_GITHUB,
   CLAUDE_CODE_USE_BEDROCK: process.env.CLAUDE_CODE_USE_BEDROCK,
@@ -57,6 +58,7 @@ function clearProviderEnv(): void {
   delete process.env.OPENAI_MODEL
   delete process.env.CLAUDE_CODE_USE_OPENAI
   delete process.env.CLAUDE_CODE_USE_GEMINI
+  delete process.env.CLAUDE_CODE_USE_GEMINI_VERTEX
   delete process.env.CLAUDE_CODE_USE_MISTRAL
   delete process.env.CLAUDE_CODE_USE_GITHUB
   delete process.env.CLAUDE_CODE_USE_BEDROCK
@@ -87,6 +89,7 @@ afterEach(() => {
     restoreEnvValue('OPENAI_MODEL')
     restoreEnvValue('CLAUDE_CODE_USE_OPENAI')
     restoreEnvValue('CLAUDE_CODE_USE_GEMINI')
+    restoreEnvValue('CLAUDE_CODE_USE_GEMINI_VERTEX')
     restoreEnvValue('CLAUDE_CODE_USE_MISTRAL')
     restoreEnvValue('CLAUDE_CODE_USE_GITHUB')
     restoreEnvValue('CLAUDE_CODE_USE_BEDROCK')
