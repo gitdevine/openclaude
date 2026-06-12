@@ -18,6 +18,7 @@ const SYNC_END = '\x1B[?2026l'
 const ORIGINAL_ENV = {
   CLAUDE_CODE_SIMPLE: process.env.CLAUDE_CODE_SIMPLE,
   CLAUDE_CODE_USE_GITHUB: process.env.CLAUDE_CODE_USE_GITHUB,
+  CLAUDE_CODE_USE_GEMINI_VERTEX: process.env.CLAUDE_CODE_USE_GEMINI_VERTEX,
   GITHUB_TOKEN: process.env.GITHUB_TOKEN,
   GH_TOKEN: process.env.GH_TOKEN,
 }
@@ -120,6 +121,7 @@ const PRESET_ORDER = [
   'Codex OAuth',
   'xAI OAuth (Grok)',
   'Fireworks AI',
+  'Gemini Vertex',
   'Google Gemini',
   'Groq',
   'Hicap',

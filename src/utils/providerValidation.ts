@@ -420,6 +420,21 @@ export async function getProviderValidationError(
     hasStoredXaiOAuthCredentials?: () => Promise<boolean>
   },
 ): Promise<string | null> {
+  if (isEnvTruthy(env.CLAUDE_CODE_USE_GEMINI_VERTEX)) {
+    const hasProject =
+      hasNonEmptyEnvValue(env, 'GEMINI_VERTEX_PROJECT') ||
+      hasNonEmptyEnvValue(env, 'GOOGLE_CLOUD_PROJECT') ||
+      hasNonEmptyEnvValue(env, 'GCLOUD_PROJECT') ||
+      hasNonEmptyEnvValue(env, 'GOOGLE_PROJECT_ID')
+    if (!hasProject) {
+      return 'Gemini Vertex project is required via GEMINI_VERTEX_PROJECT or GOOGLE_CLOUD_PROJECT.'
+    }
+    if (env.GEMINI_VERTEX_MODEL !== undefined && !hasNonEmptyEnvValue(env, 'GEMINI_VERTEX_MODEL')) {
+      return 'Gemini Vertex model is required via GEMINI_VERTEX_MODEL.'
+    }
+    return null
+  }
+
   const secretSource: SecretValueSource = {
     OPENAI_API_KEY: env.OPENAI_API_KEY,
     CODEX_API_KEY: env.CODEX_API_KEY,

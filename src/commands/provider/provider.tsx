@@ -37,6 +37,7 @@ import {
   buildCodexOAuthProfileEnv as buildSharedCodexOAuthProfileEnv,
   buildCodexProfileEnv,
   buildGeminiProfileEnv,
+  buildGeminiVertexProfileEnv,
   buildMistralProfileEnv,
   buildOllamaProfileEnv,
   buildOpenAIProfileEnv,
@@ -57,7 +58,9 @@ import {
   type ProviderProfile,
 } from '../../utils/providerProfile.js'
 import {
+  DEFAULT_GEMINI_VERTEX_MODEL,
   getGeminiProjectIdHint,
+  getGeminiVertexLocation,
   mayHaveGeminiAdcCredentials,
 } from '../../utils/geminiAuth.js'
 import {
@@ -166,6 +169,9 @@ type Step =
       apiKey?: string
       authMode: 'api-key' | 'access-token' | 'adc'
     }
+  | { name: 'gemini-vertex-project'; defaultModel: string }
+  | { name: 'gemini-vertex-location'; project: string; defaultModel: string }
+  | { name: 'gemini-vertex'; project: string; location: string; defaultModel: string }
   | { name: 'codex-oauth' }
   | { name: 'codex-check' }
 
@@ -201,6 +207,8 @@ type ProviderWizardDefaults = {
   openAIModel: string
   openAIBaseUrl: string
   geminiModel: string
+  geminiVertexModel: string
+  geminiVertexLocation: string
   mistralModel: string
   mistralBaseUrl: string
 }
@@ -265,6 +273,12 @@ export function getProviderWizardDefaults(
   const safeGeminiModel =
     sanitizeProviderConfigValue(processEnv.GEMINI_MODEL, secretSource) ||
     DEFAULT_GEMINI_MODEL
+  const safeGeminiVertexModel =
+    sanitizeProviderConfigValue(processEnv.GEMINI_VERTEX_MODEL, secretSource) ||
+    DEFAULT_GEMINI_VERTEX_MODEL
+  const safeGeminiVertexLocation =
+    sanitizeProviderConfigValue(processEnv.GEMINI_VERTEX_LOCATION, secretSource) ||
+    getGeminiVertexLocation(processEnv)
   const safeMistralModel =
     sanitizeProviderConfigValue(processEnv.MISTRAL_MODEL, secretSource) ||
     DEFAULT_MISTRAL_MODEL
@@ -276,6 +290,8 @@ export function getProviderWizardDefaults(
     openAIModel: safeOpenAIModel,
     openAIBaseUrl: safeOpenAIBaseUrl,
     geminiModel: safeGeminiModel,
+    geminiVertexModel: safeGeminiVertexModel,
+    geminiVertexLocation: safeGeminiVertexLocation,
     mistralModel: safeMistralModel,
     mistralBaseUrl: safeMistralBaseUrl,
   }
@@ -289,6 +305,24 @@ export function buildCurrentProviderSummary(options?: {
   const secretSource = processEnv as SecretSourceEnv
   const persisted = options?.persisted ?? loadProfileFile()
   const savedProfileLabel = persisted?.profile ?? 'none'
+
+  if (isEnvTruthy(processEnv.CLAUDE_CODE_USE_GEMINI_VERTEX)) {
+    const geminiVertexMetadata = getProviderPresetUiMetadata('gemini-vertex', processEnv)
+    const project = processEnv.GEMINI_VERTEX_PROJECT ?? processEnv.GOOGLE_CLOUD_PROJECT ?? processEnv.GCLOUD_PROJECT ?? processEnv.GOOGLE_PROJECT_ID
+    const location = processEnv.GEMINI_VERTEX_LOCATION ?? getGeminiVertexLocation(processEnv)
+    return {
+      providerLabel: geminiVertexMetadata.label,
+      modelLabel: getSafeDisplayValue(
+        processEnv.GEMINI_VERTEX_MODEL ?? DEFAULT_GEMINI_VERTEX_MODEL,
+        secretSource,
+      ),
+      endpointLabel: getSafeDisplayValue(
+        project ? `${project}/${location}` : location,
+        secretSource,
+      ),
+      savedProfileLabel,
+    }
+  }
 
   if (isEnvTruthy(processEnv.CLAUDE_CODE_USE_GEMINI)) {
     const geminiMetadata = getProviderPresetUiMetadata('gemini', processEnv)
@@ -669,6 +703,7 @@ function ProviderChooser({
   const ollamaMetadata = getProviderPresetUiMetadata('ollama')
   const openAIMetadata = getProviderPresetUiMetadata('openai')
   const geminiMetadata = getProviderPresetUiMetadata('gemini')
+  const geminiVertexMetadata = getProviderPresetUiMetadata('gemini-vertex')
   const mistralMetadata = getProviderPresetUiMetadata('mistral')
   const helperText = canUseCodexOAuth
     ? 'Save a provider profile without editing environment variables first. Codex profiles backed by env, auth.json, or OpenClaude secure storage can switch this session immediately when validation succeeds.'
@@ -694,6 +729,11 @@ function ProviderChooser({
       label: geminiMetadata.label,
       value: 'gemini',
       description: 'Use Gemini with API key, access token, or local ADC',
+    },
+    {
+      label: geminiVertexMetadata.label,
+      value: 'gemini-vertex',
+      description: geminiVertexMetadata.description,
     },
     {
       label: mistralMetadata.label,
@@ -1317,6 +1357,8 @@ export function ProviderWizard({
               })
             } else if (value === 'gemini') {
               setStep({ name: 'gemini-auth-method' })
+            } else if (value === 'gemini-vertex') {
+              setStep({ name: 'gemini-vertex-project', defaultModel: defaults.geminiVertexModel })
             } else if (value === 'mistral') {
               setStep({
                 name: 'mistral-key',
@@ -1768,6 +1810,98 @@ export function ProviderWizard({
           }
         />
       )
+
+    case 'gemini-vertex-project': {
+      const geminiVertexMetadata = getProviderPresetUiMetadata('gemini-vertex')
+      const projectHint = getGeminiProjectIdHint(process.env) ?? ''
+      return (
+        <TextEntryDialog
+          resetStateKey={step.name}
+          title={`${geminiVertexMetadata.label} setup`}
+          subtitle="Step 1 of 3"
+          description={
+            projectHint
+              ? `Enter your Google Cloud project ID, or leave blank to reuse the detected value (${projectHint}).`
+              : 'Enter your Google Cloud project ID.'
+          }
+          initialValue={projectHint}
+          placeholder="my-gcp-project"
+          allowEmpty={Boolean(projectHint)}
+          validate={value => {
+            const candidate = value.trim() || projectHint
+            return candidate ? null : 'A Google Cloud project ID is required. Set GOOGLE_CLOUD_PROJECT or enter one here.'
+          }}
+          onSubmit={value => {
+            setStep({
+              name: 'gemini-vertex-location',
+              project: value.trim() || projectHint,
+              defaultModel: step.defaultModel,
+            })
+          }}
+          onCancel={() => setStep({ name: 'choose' })}
+        />
+      )
+    }
+
+    case 'gemini-vertex-location': {
+      const geminiVertexMetadata = getProviderPresetUiMetadata('gemini-vertex')
+      return (
+        <TextEntryDialog
+          resetStateKey={step.name}
+          title={`${geminiVertexMetadata.label} setup`}
+          subtitle="Step 2 of 3"
+          description="Enter the Vertex AI region. Leave blank for global (recommended — required for gemini-3.5-flash)."
+          initialValue={defaults.geminiVertexLocation === 'global' ? '' : defaults.geminiVertexLocation}
+          placeholder="global"
+          allowEmpty
+          onSubmit={value => {
+            setStep({
+              name: 'gemini-vertex',
+              project: step.project,
+              location: value.trim() || 'global',
+              defaultModel: step.defaultModel,
+            })
+          }}
+          onCancel={() =>
+            setStep({
+              name: 'gemini-vertex-project',
+              defaultModel: step.defaultModel,
+            })
+          }
+        />
+      )
+    }
+
+    case 'gemini-vertex': {
+      const geminiVertexMetadata = getProviderPresetUiMetadata('gemini-vertex')
+      return (
+        <TextEntryDialog
+          resetStateKey={step.name}
+          title={`${geminiVertexMetadata.label} setup`}
+          subtitle="Step 3 of 3"
+          description={`Enter a model name. Leave blank for ${step.defaultModel}.`}
+          initialValue={defaults.geminiVertexModel}
+          placeholder={step.defaultModel}
+          allowEmpty
+          onSubmit={value => {
+            const env = buildGeminiVertexProfileEnv({
+              model: value.trim() || step.defaultModel,
+              project: step.project,
+              location: step.location,
+              processEnv: {},
+            })
+            finishProfileSave(onDone, 'gemini-vertex', env)
+          }}
+          onCancel={() =>
+            setStep({
+              name: 'gemini-vertex-location',
+              project: step.project,
+              defaultModel: step.defaultModel,
+            })
+          }
+        />
+      )
+    }
 
     case 'codex-check':
       return (

@@ -440,6 +440,21 @@ describe('Gemini Vertex provider drift guards', () => {
     expect(providerKeysSection).toContain('CLAUDE_CODE_USE_GEMINI_VERTEX')
   })
 
+  test('ProviderManager GitHub activation clears stale Gemini Vertex routing', async () => {
+    const content = await file('components/ProviderManager.tsx').text()
+    const githubActivationStart = content.indexOf('function activateGithubProvider')
+    const githubActivationEnd = content.indexOf('function deleteGithubProvider', githubActivationStart)
+    const githubActivationSection = content.slice(
+      githubActivationStart,
+      githubActivationEnd,
+    )
+
+    expect(githubActivationSection).toContain('CLAUDE_CODE_USE_GEMINI_VERTEX')
+    expect(githubActivationSection).toContain(
+      'delete process.env.CLAUDE_CODE_USE_GEMINI_VERTEX',
+    )
+  })
+
   test('auth treats Gemini Vertex as a third-party provider', async () => {
     const content = await file('utils/auth.ts').text()
     const is3PStart = content.indexOf('const is3P =')
