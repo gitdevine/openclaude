@@ -64,6 +64,7 @@ describe('onboarding auth precedence cleanup', () => {
       OPENAI_API_BASE: 'https://api.openai.com/v1',
       CLAUDE_CODE_PROVIDER_PROFILE_ENV_APPLIED: '1',
       CLAUDE_CODE_PROVIDER_PROFILE_ENV_APPLIED_ID: 'profile_old',
+      CLAUDE_CODE_USE_GEMINI_VERTEX: '1',
     }
 
     applyGithubOnboardingProcessEnv('github:copilot', env)
@@ -79,6 +80,9 @@ describe('onboarding auth precedence cleanup', () => {
     expect(env.OPENAI_API_BASE).toBeUndefined()
 
     expect(env.CLAUDE_CODE_USE_OPENAI).toBeUndefined()
+    // The fast path must clear Gemini Vertex routing too, like the
+    // device-flow finalize path (PROVIDER_SPECIFIC_KEYS).
+    expect(env.CLAUDE_CODE_USE_GEMINI_VERTEX).toBeUndefined()
     expect(env.CLAUDE_CODE_PROVIDER_PROFILE_ENV_APPLIED).toBeUndefined()
     expect(env.CLAUDE_CODE_PROVIDER_PROFILE_ENV_APPLIED_ID).toBeUndefined()
 
@@ -89,6 +93,7 @@ describe('onboarding auth precedence cleanup', () => {
     expect(settingsEnv.OPENAI_ORG).toBeUndefined()
     expect(settingsEnv.OPENAI_PROJECT).toBeUndefined()
     expect(settingsEnv.OPENAI_ORGANIZATION).toBeUndefined()
+    expect(settingsEnv.CLAUDE_CODE_USE_GEMINI_VERTEX).toBeUndefined()
   })
 })
 
